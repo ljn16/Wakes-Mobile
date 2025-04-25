@@ -1,3 +1,4 @@
+import { XMLParser } from 'fast-xml-parser';
 import { supabase } from '@/lib/supabase';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Dimensions, ActivityIndicator, Text, Button } from 'react-native';
@@ -38,7 +39,9 @@ export default function ExploreScreen() {
 
       const loc = await Location.getCurrentPositionAsync({});
       setLocation(loc);
-      const { data, error } = await supabase.from('Lake').select('*');
+
+      const { data, error } = await supabase.from('Lake').select('id, name, latitude, longitude');
+      
       if (error) {
         console.error('Error fetching lakes:', error.message);
         return;
@@ -71,15 +74,63 @@ export default function ExploreScreen() {
             key={lake.id}
             coordinate={{ latitude: lake.latitude, longitude: lake.longitude }}
             title={lake.name}
-            onPress={() => {
+            onPress={async () => {
+              let route: { latitude: number; longitude: number }[] = [];
               console.log("Selected lake:", lake);
+
+              try {
+                const { data: mediaData, error: mediaError } = await supabase
+                  .from('Media')
+                  .select('url')
+                  .eq('lakeId', lake.id)
+                  .eq('type', 'application/gpx+xml')
+                  .maybeSingle();
+
+                if (mediaError) {
+                  console.error("Error fetching media:", mediaError.message);
+                } else if (mediaData?.url) {
+                  console.log("✅ Found GPX URL:", mediaData.url);
+                  const response = await fetch(mediaData.url);
+
+                  console.log("✅ GPX fetch HTTP status:", response.status);
+
+                  const gpxText = await response.text();
+                  console.log("✅ Raw GPX text:", gpxText.slice(0, 500));
+
+                  const parser = new XMLParser({
+                    ignoreAttributes: false,
+                    attributeNamePrefix: '@_',
+                    removeNSPrefix: true,
+                  });
+                  let gpx;
+                  try {
+                    gpx = parser.parse(gpxText);
+                  } catch (parseError) {
+                    console.error("❌ Error parsing GPX XML:", parseError);
+                  }
+
+                  console.log("✅ Full parsed GPX object:", JSON.stringify(gpx, null, 2));
+
+                  const trackSegment = gpx?.gpx?.trk?.trkseg;
+                  console.log("✅ GPX track segment:", JSON.stringify(trackSegment, null, 2));
+
+                  let trackPoints = Array.isArray(trackSegment) ? trackSegment[0]?.trkpt : trackSegment?.trkpt;
+                  if (trackPoints && Array.isArray(trackPoints)) {
+                    route = trackPoints.map((pt: any) => ({
+                      latitude: parseFloat(pt['@_lat']),
+                      longitude: parseFloat(pt['@_lon']),
+                    }));
+                  }
+                }
+              } catch (error) {
+                console.error("Failed to load or parse GPX:", error);
+              }
+
+              // console.log("Parsed route points:", route);
+
               selectLake({
                 ...lake,
-                route: [
-                  { latitude: lake.latitude + 0.001, longitude: lake.longitude },
-                  { latitude: lake.latitude + 0.002, longitude: lake.longitude + 0.001 },
-                  { latitude: lake.latitude + 0.003, longitude: lake.longitude },
-                ],
+                route,
               });
             }}
           />
