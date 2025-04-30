@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { LakeProvider } from '@/context/LakeContext';
 

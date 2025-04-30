@@ -1,10 +1,12 @@
-import { View, Text, StyleSheet, Modal, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, Image, useColorScheme } from 'react-native';
 import { Linking } from 'react-native';
 import { useLake } from '@/context/LakeContext';
 import { useEffect, useRef, useState } from 'react';
 import MapView, { Marker, Region, Polyline } from 'react-native-maps';
 import { WebView } from 'react-native-webview';
 import { XMLParser } from 'fast-xml-parser';
+import BottomSheet from '@gorhom/bottom-sheet';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 
 
@@ -14,6 +16,12 @@ export default function DetailsScreen() {
   const [route, setRoute] = useState<{ latitude: number; longitude: number }[] | null>(null);
 
   const mapRef = useRef<MapView | null>(null);
+  const sheetRef = useRef<BottomSheet>(null);
+  const snapPoints = ['17%', '50%', '90%'];
+
+    const colorScheme = useColorScheme();
+    const sheetBackgroundColor = colorScheme === 'dark' ? '#23292c' : 'white';
+    const textColor = colorScheme === 'dark' ? 'white' : 'black';
 
   useEffect(() => {
     if (selectedLake && mapRef.current) {
@@ -89,27 +97,41 @@ export default function DetailsScreen() {
           />
         )}
       </MapView>
-      <View style={{ position: 'absolute', top: 75, alignSelf: 'center' }}>
-        <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, width: 300 }}>
+      <BottomSheet
+        ref={sheetRef}
+        index={0}
+        snapPoints={snapPoints}
+        enablePanDownToClose={false}
+        backgroundStyle={{ backgroundColor: sheetBackgroundColor }}
+        handleIndicatorStyle={{ backgroundColor: '#ccc', width: 40 }}
+      >
+        <BottomSheetScrollView contentContainerStyle={{ paddingHorizontal: 20 }}>
+        <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 10, color: textColor, textAlign: 'center' }}>
+          {selectedLake.name}
+        </Text>
+
           <Image
             source={{ uri: selectedLake?.images?.find(img => img.isMain)?.url || require('../../ph.png') }}
-            // source={require('../../ph.png')}
             style={{ width: '100%', height: 150, borderRadius: 8, marginBottom: 10 }}
             resizeMode="cover"
-            />
-          <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 10 }}>{selectedLake.name}</Text>
-          {/* <Text style={{ fontSize: 16, marginBottom: 4 }}>Latitude: {selectedLake.latitude}</Text>
-          <Text style={{ fontSize: 16, marginBottom: 4 }}>Longitude: {selectedLake.longitude}</Text> */}
-          <Text style={{ fontSize: 16, marginBottom: 4 }}>Route Length: 3.2 miles STATIC</Text>
-          <Text style={{ fontSize: 16, marginBottom: 4 }}>Est. Time: 45 minutes STATIC</Text>
-          <Text
+          />
+          <Text style={{ fontSize: 16, marginBottom: 4, color: textColor }}>Route: 3.2 miles STATIC</Text>
+          <Text style={{ fontSize: 16, marginBottom: 4, color: textColor }}>Est. Time: 45 minutes STATIC</Text>
+          <Pressable
             onPress={() => setModalVisible(true)}
-            style={{ fontSize: 16, color: 'blue', textDecorationLine: 'underline' }}
+            style={{
+              marginTop: 10,
+              paddingVertical: 10,
+              paddingHorizontal: 20,
+              backgroundColor: colorScheme === 'dark' ? '#333' : '#007AFF',
+              borderRadius: 8,
+              alignItems: 'center',
+            }}
           >
-            View Depth Map
-          </Text>
-        </View>
-      </View>
+            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>View Depth Map</Text>
+          </Pressable>
+        </BottomSheetScrollView>
+      </BottomSheet>
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -122,18 +144,19 @@ export default function DetailsScreen() {
               onPress={() => setModalVisible(false)}
               style={{
               position: 'absolute',
-              top: 50,
+              bottom: 10,
               alignSelf: 'center',
               zIndex: 10,
-              backgroundColor: '#000',
-              paddingHorizontal: 12,
-              paddingVertical: 8,
+              backgroundColor: '#D32F2F', // Material Design red 700              paddingHorizontal: 24,
+              paddingVertical: 10,
               borderRadius: 8,
               borderColor: 'white',
-              borderWidth: 2,
+              minWidth: 350,
+              minHeight:75,
+              alignItems: 'center',
               }}
             >
-              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Close</Text>
+              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16, lineHeight: 75, textAlign: 'center' }}>Close</Text>
             </Pressable>
             <WebView
               source={{

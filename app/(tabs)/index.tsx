@@ -19,7 +19,7 @@ export default function ExploreScreen() {
   const [radius, setRadius] = useState(5); // default radius in miles
 
   const colorScheme = useColorScheme();
-  const sheetBackgroundColor = colorScheme === 'dark' ? 'gray' : 'white';
+  const sheetBackgroundColor = colorScheme === 'dark' ? '#23292c' : 'white';
   const textColor = colorScheme === 'dark' ? 'white' : 'black';
 
   const { selectLake } = useLake();
@@ -68,8 +68,8 @@ export default function ExploreScreen() {
       locationSubscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Highest,
-          timeInterval: 5000, // Update every 5 seconds
-          distanceInterval: 10, // Or every 10 meters
+          timeInterval: 5000,
+          distanceInterval: 10,
         },
         (newLocation) => {
           setLocation(newLocation);
@@ -101,7 +101,7 @@ export default function ExploreScreen() {
       <MapView
         key={lakes.length}
         style={styles.map}
-        initialRegion={{
+        region={{
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
           latitudeDelta: 0.05,
