@@ -1,13 +1,17 @@
-import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, Image } from 'react-native';
 import { Linking } from 'react-native';
 import { useLake } from '@/context/LakeContext';
 import { useEffect, useRef, useState } from 'react';
 import MapView, { Marker, Region, Polyline } from 'react-native-maps';
 import { WebView } from 'react-native-webview';
+import { XMLParser } from 'fast-xml-parser';
+
+
 
 export default function DetailsScreen() {
   const { selectedLake } = useLake();
   const [modalVisible, setModalVisible] = useState(false);
+  const [route, setRoute] = useState<{ latitude: number; longitude: number }[] | null>(null);
 
   const mapRef = useRef<MapView | null>(null);
 
@@ -23,12 +27,40 @@ export default function DetailsScreen() {
     }
   }, [selectedLake]);
 
-  console.log("Current selectedLake in Details:", selectedLake);
+  useEffect(() => {
+    const fetchAndParseGpx = async () => {
+      if (!selectedLake?.gpxUrl) return;
+      try {
+        const response = await fetch(selectedLake.gpxUrl);
+        const gpxText = await response.text();
+        const parser = new XMLParser({
+          ignoreAttributes: false,
+          attributeNamePrefix: '@_',
+          removeNSPrefix: true,
+        });
+        const gpx = parser.parse(gpxText);
+        const trackSegment = gpx?.gpx?.trk?.trkseg;
+        let trackPoints = Array.isArray(trackSegment) ? trackSegment[0]?.trkpt : trackSegment?.trkpt;
+        if (trackPoints && Array.isArray(trackPoints)) {
+          const parsed = trackPoints.map((pt: any) => ({
+            latitude: parseFloat(pt['@_lat']),
+            longitude: parseFloat(pt['@_lon']),
+          }));
+          setRoute(parsed);
+        }
+      } catch (err) {
+        console.error("Failed to fetch or parse GPX:", err);
+      }
+    };
+    fetchAndParseGpx();
+  }, [selectedLake?.gpxUrl]);
+
+  // console.log("Current selectedLake in Details:", selectedLake);
 
   if (!selectedLake) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>No lake selected.</Text>
+        <Text>Select a lake to see lake details</Text>
       </View>
     );
   } 
@@ -49,9 +81,9 @@ export default function DetailsScreen() {
           coordinate={{ latitude: selectedLake.latitude, longitude: selectedLake.longitude }}
           title={selectedLake.name}
         />
-        {selectedLake.route && (
+        {route && (
           <Polyline
-            coordinates={selectedLake.route}
+            coordinates={route}
             strokeColor="blue"
             strokeWidth={4}
           />
@@ -59,6 +91,12 @@ export default function DetailsScreen() {
       </MapView>
       <View style={{ position: 'absolute', top: 75, alignSelf: 'center' }}>
         <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, width: 300 }}>
+          <Image
+            source={{ uri: selectedLake?.images?.find(img => img.isMain)?.url || require('../../ph.png') }}
+            // source={require('../../ph.png')}
+            style={{ width: '100%', height: 150, borderRadius: 8, marginBottom: 10 }}
+            resizeMode="cover"
+            />
           <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 10 }}>{selectedLake.name}</Text>
           {/* <Text style={{ fontSize: 16, marginBottom: 4 }}>Latitude: {selectedLake.latitude}</Text>
           <Text style={{ fontSize: 16, marginBottom: 4 }}>Longitude: {selectedLake.longitude}</Text> */}

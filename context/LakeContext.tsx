@@ -1,12 +1,24 @@
 import React, { createContext, useState, useContext } from 'react';
 
 
+type LakeImage = {
+  id: number;
+  lakeId: number;
+  url: string;
+  isMain: boolean;
+  latitude?: number;
+  longitude?: number;
+  timestamp?: string;
+  createdAt?: string;
+};
+
 type Lake = {
     id: string;
     name: string;
     latitude: number;
     longitude: number;
     route?: { latitude: number; longitude: number }[];
+    images?: LakeImage[];
   };
 
 type LakeContextType = {
